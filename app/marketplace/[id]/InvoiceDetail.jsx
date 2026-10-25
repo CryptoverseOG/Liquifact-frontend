@@ -9,6 +9,7 @@ import StatusBadge from "@/components/StatusBadge";
 import RiskBadge from "@/components/RiskBadge";
 import RiskFactorsCard from "@/components/RiskFactorsCard";
 import ContractCard from "@/components/ContractCard";
+import ActivityFeed from "./ActivityFeed";
 import EscrowRules from "@/components/escrow/EscrowRules";
 import { useNotifications } from "@/components/NotificationsProvider";
 import { useOptionalToast } from "@/components/toast/ToastProvider";
@@ -406,6 +407,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             <FundersTable currency={inv.currency} />
           </>
         )}
+        {inv.onChain && <div style={{ marginTop: 20 }}><ActivityFeed invoiceId={inv.id} /></div>}
       </div>
     </section>
   );
