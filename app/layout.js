@@ -4,6 +4,7 @@ import SiteHeader from "@/components/SiteHeader";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
 import SkipLink from "@/components/SkipLink";
+import ToastProvider from "@/components/toast/ToastProvider";
 import { TxTrackerProvider } from "@/components/TxTrackerProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
@@ -32,13 +33,15 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <SkipLink />
-        <TxTrackerProvider>
-          <NotificationsProvider>
-            <SiteHeader />
-            <main id="main" tabIndex={-1}>{children}</main>
-            <SiteFooter />
-          </NotificationsProvider>
-        </TxTrackerProvider>
+        <ToastProvider>
+          <TxTrackerProvider>
+            <NotificationsProvider>
+              <SiteHeader />
+              <main id="main" tabIndex={-1}>{children}</main>
+              <SiteFooter />
+            </NotificationsProvider>
+          </TxTrackerProvider>
+        </ToastProvider>
         <ServiceWorkerRegistrar />
       </body>
     </html>

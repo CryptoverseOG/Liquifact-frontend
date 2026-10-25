@@ -11,6 +11,7 @@ import RiskFactorsCard from "@/components/RiskFactorsCard";
 import ContractCard from "@/components/ContractCard";
 import EscrowRules from "@/components/escrow/EscrowRules";
 import { useNotifications } from "@/components/NotificationsProvider";
+import { useOptionalToast } from "@/components/toast/ToastProvider";
 import FundersTable from "@/components/escrow/FundersTable";
 import TokenCheck, { useFundingTokenCheck } from "@/components/escrow/TokenCheck";
 import { fundInvoice, getEscrowLive, getInvoice, listInvoices } from "@/lib/api";
@@ -56,6 +57,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const [medians, setMedians] = useState(null);
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState(null);
+  const toast = useOptionalToast();
   const [busy, setBusy] = useState(false);
   const [rules, setRules] = useState({ loading: false, data: null, error: null });
   const { follow, unfollow, isFollowing } = useNotifications();
@@ -187,9 +189,14 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       setState((s) => ({ ...s, data }));
       setAmount("");
       follow(id); // auto-follow so future status changes surface in the bell
-      setMsg({ kind: "ok", text: `Contribution of ${formatAmount(Number(amount), data.currency)} recorded.` });
+      const text = `Contribution of ${formatAmount(Number(amount), data.currency)} recorded.`;
+      // Fund results are announced as toasts when the app shell provides them (#1399).
+      if (toast) toast.push({ kind: "success", title: "Contribution recorded", description: text });
+      else setMsg({ kind: "ok", text });
     } catch (err) {
-      setMsg({ kind: "err", text: err.message || "Funding failed." });
+      const text = err.message || "Funding failed.";
+      if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
+      else setMsg({ kind: "err", text });
     } finally {
       apiLock.current = false;
       setBusy(false);
