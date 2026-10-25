@@ -17,6 +17,7 @@ import FundersTable from "@/components/escrow/FundersTable";
 import TokenCheck, { useFundingTokenCheck } from "@/components/escrow/TokenCheck";
 import { fundInvoice, getEscrowLive, getInvoice, listInvoices } from "@/lib/api";
 import BalanceHint from "@/components/wallet/BalanceHint";
+import { validateContribution as checkApiContribution, creditedAmount } from "@/lib/contribution";
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
@@ -34,6 +35,25 @@ function onChainRemaining(inv) {
     return stroopsToDisplay(remainingStroops(inv));
   } catch {
     return Math.max(0, Number(inv.amount) - Number(inv.fundedAmount));
+  }
+}
+
+function contributionErrorText(error, remaining, currency) {
+  switch (error) {
+    case "REQUIRED":
+      return "Amount is required.";
+    case "NOT_A_NUMBER":
+      return "Amount must be a number.";
+    case "NON_POSITIVE":
+      return "Enter a positive amount.";
+    case "TOO_MANY_DECIMALS":
+      return "Maximum 7 decimal places allowed.";
+    case "EXCEEDS_REMAINING":
+      return `Exceeds the remaining capacity of ${formatAmount(remaining, currency)}.`;
+    case "NOT_OPEN":
+      return "This invoice is no longer open for funding.";
+    default:
+      return "Enter a valid positive amount.";
   }
 }
 
@@ -171,6 +191,12 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       return;
     }
     if (apiLock.current) return;
+    // API invoices: reject amounts above the remaining capacity or on closed invoices (#1396).
+    const check = checkApiContribution(amount, inv);
+    if (!check.ok) {
+      setMsg({ kind: "err", text: contributionErrorText(check.error, remaining, inv.currency) });
+      return;
+    }
     // Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
     let valid;
     try {
@@ -183,6 +209,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       setMsg({ kind: "err", text: "Enter a positive amount." });
       return;
     }
+    const before = inv;
     apiLock.current = true;
     setBusy(true);
     setMsg(null);
@@ -191,14 +218,26 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       setState((s) => ({ ...s, data }));
       setAmount("");
       follow(id); // auto-follow so future status changes surface in the bell
-      const text = `Contribution of ${formatAmount(Number(amount), data.currency)} recorded.`;
+      // Report what the API actually credited, not what was typed (#1396).
+      const credited = creditedAmount(before, data);
+      const partial = credited > 0 && credited < n;
+      const text = partial
+        ? `Only ${formatAmount(credited, data.currency)} was needed to complete funding; ${formatAmount(credited, data.currency)} recorded.`
+        : `Contribution of ${formatAmount(credited > 0 ? credited : n, data.currency)} recorded.`;
       // Fund results are announced as toasts when the app shell provides them (#1399).
-      if (toast) toast.push({ kind: "success", title: "Contribution recorded", description: text });
-      else setMsg({ kind: "ok", text });
+      if (toast) toast.push({ kind: partial ? "warning" : "success", title: "Contribution recorded", description: text });
+      else setMsg({ kind: partial ? "warn" : "ok", text });
     } catch (err) {
-      const text = err.message || "Funding failed.";
-      if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
-      else setMsg({ kind: "err", text });
+      if (err.status === 409) {
+        // The invoice closed meanwhile: refresh it and explain instead of a raw API error.
+        const refreshed = await getInvoice(id);
+        setState((s) => ({ ...s, ...refreshed }));
+        setMsg({ kind: "err", text: "This invoice is no longer open for funding." });
+      } else {
+        const text = err.message || "Funding failed.";
+        if (toast) toast.push({ kind: "error", title: "Funding failed", description: text });
+        else setMsg({ kind: "err", text });
+      }
     } finally {
       apiLock.current = false;
       setBusy(false);
@@ -334,6 +373,11 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                         Max
                       </button>
                     )}
+                    {!inv.onChain && Number(remaining) > 0 && (
+                      <button type="button" className="btn btn-ghost btn-max" onClick={() => setAmount(String(remaining))}>
+                        Max
+                      </button>
+                    )}
                   </div>
                   <span className="hint" id="amount-hint">
                     {inv.onChain && rules.loading
@@ -357,7 +401,14 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                 {inv.onChain && <TokenCheck invoice={inv} check={tokenCheck} />}
                 <button
                   className="btn btn-primary focus-ring"
-                  disabled={fundDisabled || fundingBusy || !balanceValidation.ok || !tokenCheck.ok || (inv.onChain && (!chain.address || chain.pending))}
+                  disabled={
+                    fundDisabled ||
+                    fundingBusy ||
+                    !balanceValidation.ok ||
+                    !tokenCheck.ok ||
+                    (inv.onChain && (!chain.address || chain.pending)) ||
+                    (!inv.onChain && amount.trim() !== "" && !checkApiContribution(amount, inv).ok)
+                  }
                 >
                   {inv.onChain && chain.busy
                     ? `${chain.state.phase}...`
@@ -369,6 +420,11 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
                           ? "Sign & fund"
                           : "Fund invoice"}
                 </button>
+                {state.offline && (
+                  <div className="muted" style={{ marginTop: 8, fontSize: "0.85rem" }}>
+                    Funding is unavailable while the API is unreachable.
+                  </div>
+                )}
               </form>
             ) : (
               <p className="muted" style={{ marginTop: 12 }}>
