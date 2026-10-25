@@ -16,6 +16,7 @@ import { fundInvoice, getEscrowLive, getInvoice, listInvoices } from "@/lib/api"
 import BalanceHint from "@/components/wallet/BalanceHint";
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
+import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
 import { loadConstraints, validateContribution, maxFillAmount, CODES } from "@/lib/escrow/constraints";
 import { parseToStroops, remainingStroops, stroopsToDisplay } from "@/lib/stellar/amount";
@@ -29,6 +30,16 @@ function onChainRemaining(inv) {
     return stroopsToDisplay(remainingStroops(inv));
   } catch {
     return Math.max(0, Number(inv.amount) - Number(inv.fundedAmount));
+  }
+}
+
+// Exact decimal remaining capacity for API-only invoices (BigInt minor units, #1395).
+function offChainRemaining(inv) {
+  try {
+    const currency = inv.currency || "USDC";
+    return stroopsToDisplay(money.sub(money.parse(inv.amount, currency), money.parse(inv.fundedAmount ?? 0, currency), { clamp: true }));
+  } catch {
+    return Math.max(0, inv.amount - inv.fundedAmount);
   }
 }
 
@@ -155,8 +166,15 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
       return;
     }
     if (apiLock.current) return;
+    // Exact decimal validation (no float coercion); unknown currencies fall back to a numeric check.
+    let valid;
+    try {
+      valid = money.parse(amount.trim(), inv?.currency || "USDC") > 0n;
+    } catch (err) {
+      valid = err instanceof RangeError && /Unsupported currency/.test(err.message) ? Number(amount) > 0 : false;
+    }
     const n = Number(amount);
-    if (!(n > 0)) {
+    if (!valid) {
       setMsg({ kind: "err", text: "Enter a positive amount." });
       return;
     }
@@ -201,7 +219,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   }
 
   const pct = fundedPercent(inv);
-  const remaining = inv.onChain ? onChainRemaining(inv) : Math.max(0, inv.amount - inv.fundedAmount);
+  const remaining = inv.onChain ? onChainRemaining(inv) : offChainRemaining(inv);
   const fundingBusy = inv.onChain ? chain.busy || chain.connecting : busy;
   const isCancelled = inv.status === "cancelled";
   const risk = scoreInvoice(inv, undefined, medians);
