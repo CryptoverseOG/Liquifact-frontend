@@ -7,6 +7,7 @@ import OfflineNotice from "@/components/pwa/OfflineNotice";
 import InvoiceCard from "@/components/InvoiceCard";
 import { listInvoices } from "@/lib/api";
 import { computeListMedians } from "@/lib/risk";
+import { defaultFilename, exportInvoicesCsv } from "@/lib/csv";
 import {
   getNetworkName,
   getPublicKey,
@@ -83,6 +84,7 @@ export default function MarketplaceClient() {
   });
 
   const [showOnboardNotice, setShowOnboardNotice] = useState(false);
+  const [exportStatus, setExportStatus] = useState("");
 
   // Detect unfunded wallet once on mount
   useEffect(() => {
@@ -176,6 +178,21 @@ export default function MarketplaceClient() {
     urlState.q !== DEFAULTS.q ||
     urlState.sort !== DEFAULTS.sort;
 
+  // CSV export (#1387): every invoice matching the current filters, across pages.
+  const exportRows = applyQuery(fetchState.data, { ...urlState, page: 1, pageSize: Math.max(1, fetchState.data.length) }).items;
+  const canExport = !fetchState.loading && exportRows.length > 0;
+  const exportLabel = fetchState.offline ? "Export CSV (demo data)" : "Export CSV";
+
+  function handleExport() {
+    if (!canExport) return;
+    try {
+      exportInvoicesCsv(exportRows, defaultFilename());
+      setExportStatus(`Exported ${exportRows.length} invoice${exportRows.length === 1 ? "" : "s"} to CSV.`);
+    } catch {
+      setExportStatus("Export failed. Please try again.");
+    }
+  }
+
   function clearFilters() {
     setSearchInput("");
     router.push("/marketplace", { scroll: false });
@@ -214,9 +231,24 @@ export default function MarketplaceClient() {
               </button>
             ))}
           </div>
-          <Link href="/submit" className="btn btn-primary">
-            + Submit invoice
-          </Link>
+          <div style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <button
+              type="button"
+              className="btn btn-ghost"
+              onClick={handleExport}
+              disabled={!canExport}
+              aria-describedby="csv-export-status"
+              title={fetchState.offline ? "Export the demo invoices currently shown" : "Export the invoices currently shown"}
+            >
+              {exportLabel}
+            </button>
+            <Link href="/submit" className="btn btn-primary">
+              + Submit invoice
+            </Link>
+          </div>
+        </div>
+        <div id="csv-export-status" role="status" aria-live="polite" className="muted" style={{ fontSize: "0.85rem", minHeight: "1.25em", marginBottom: 8 }}>
+          {exportStatus}
         </div>
 
         {/* ---- Toolbar row 2: search + filters ---- */}
