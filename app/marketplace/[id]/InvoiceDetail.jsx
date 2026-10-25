@@ -20,6 +20,7 @@ import BalanceHint from "@/components/wallet/BalanceHint";
 import { validateContribution as checkApiContribution, creditedAmount } from "@/lib/contribution";
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
+import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
@@ -474,6 +475,10 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             <SmeActionsCard contractId={contractId} currency={inv.currency} onRefresh={refreshOnChainInvoice} />
           </div>
         )}
+        <div style={{ marginTop: 24 }}>
+          <LifecycleTimeline invoice={inv} />
+        </div>
+
         {risk.band && (
           <div style={{ marginTop: 24 }}>
             <RiskFactorsCard risk={risk} />
