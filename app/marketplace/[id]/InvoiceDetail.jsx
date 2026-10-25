@@ -18,6 +18,7 @@ import TokenCheck, { useFundingTokenCheck } from "@/components/escrow/TokenCheck
 import { fundInvoice, getEscrowLive, getInvoice, listInvoices } from "@/lib/api";
 import BalanceHint from "@/components/wallet/BalanceHint";
 import { getWalletAddress } from "@/lib/stellar/freighter";
+import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
@@ -232,6 +233,23 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const fundingBusy = inv.onChain ? chain.busy || chain.connecting : busy;
   const isCancelled = inv.status === "cancelled";
   const risk = scoreInvoice(inv, undefined, medians);
+  const contractId = inv.escrowAddress || inv.contractId || CONTRACT_ID;
+
+  async function refreshOnChainInvoice() {
+    const { readSmeEscrow } = await import("@/lib/stellar/soroban");
+    const { getPublicKey } = await import("@/lib/stellar/freighter");
+    const source = await getPublicKey();
+    if (!source) return refreshInvoice();
+    const { escrow } = await readSmeEscrow({ contractId, source });
+    const statusIndex = Number(escrow.status);
+    const status = ESCROW_STATUSES[statusIndex];
+    if (!status) throw new Error(`Unknown escrow status: ${statusIndex}`);
+    const fundedAmount = stroopsToDisplay(BigInt(escrow.funded_amount ?? escrow.fundedAmount ?? 0));
+    setState((current) => ({
+      ...current,
+      data: { ...current.data, status, fundedAmount },
+    }));
+  }
 
   return (
     <section className="section invoice-detail">
@@ -395,6 +413,11 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
           </div>
         </div>
 
+        {inv.onChain && (
+          <div style={{ marginTop: 20 }}>
+            <SmeActionsCard contractId={contractId} currency={inv.currency} onRefresh={refreshOnChainInvoice} />
+          </div>
+        )}
         {risk.band && (
           <div style={{ marginTop: 24 }}>
             <RiskFactorsCard risk={risk} />
