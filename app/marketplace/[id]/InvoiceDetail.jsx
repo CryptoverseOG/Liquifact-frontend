@@ -21,6 +21,7 @@ import { validateContribution as checkApiContribution, creditedAmount } from "@/
 import { getWalletAddress } from "@/lib/stellar/freighter";
 import SmeActionsCard from "@/components/sme/SmeActionsCard";
 import LifecycleTimeline from "@/components/invoice/LifecycleTimeline";
+import { escrowFor } from "@/lib/escrow/registry";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent, shortAddress } from "@/lib/format";
 import * as money from "@/lib/money";
 import { computeListMedians, scoreInvoice } from "@/lib/risk";
@@ -273,7 +274,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
   const fundingBusy = inv.onChain ? chain.busy || chain.connecting : busy;
   const isCancelled = inv.status === "cancelled";
   const risk = scoreInvoice(inv, undefined, medians);
-  const contractId = inv.escrowAddress || inv.contractId || CONTRACT_ID;
+  // Per-invoice escrow from the registry (#1375); never fall back to another invoice's contract.
+  const escrow = escrowFor(inv);
+  const contractId = escrow?.contractId ?? null;
 
   async function refreshOnChainInvoice() {
     const { readSmeEscrow } = await import("@/lib/stellar/soroban");
@@ -472,7 +475,7 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
         {inv.onChain && (
           <div style={{ marginTop: 20 }}>
-            <SmeActionsCard contractId={contractId} currency={inv.currency} onRefresh={refreshOnChainInvoice} />
+            {contractId && <SmeActionsCard contractId={contractId} currency={inv.currency} onRefresh={refreshOnChainInvoice} />}
           </div>
         )}
         <div style={{ marginTop: 24 }}>
@@ -487,7 +490,15 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
 
         {inv.onChain && (
           <>
-            <div style={{ marginTop: 20 }}><ContractCard /></div>
+            <div style={{ marginTop: 20 }}>
+              {escrow ? (
+                <ContractCard contractId={escrow.contractId} network={NETWORK} />
+              ) : (
+                <div className="notice notice-warn" role="alert">
+                  On-chain contract not registered for this invoice
+                </div>
+              )}
+            </div>
             <FundersTable currency={inv.currency} />
           </>
         )}

@@ -2,7 +2,7 @@ import Link from "next/link";
 import LiveStats from "@/components/LiveStats";
 import ContractCard from "@/components/ContractCard";
 import FundingProgress from "@/components/FundingProgress";
-import { API_DOCS_URL, EXPLORER_URL } from "@/lib/config";
+import { API_DOCS_URL, CONTRACT_ID, EXPLORER_URL, NETWORK } from "@/lib/config";
 import { DEMO_INVOICES } from "@/lib/demo";
 
 const STEPS = [
@@ -99,7 +99,7 @@ export default function Home() {
 
       <section className="section" style={{ paddingTop: 0 }}>
         <div className="container grid grid-2">
-          <ContractCard />
+          <ContractCard contractId={CONTRACT_ID} network={NETWORK} />
           <div className="card">
             <div className="eyebrow">Developers</div>
             <h3 style={{ marginTop: 6 }}>Build on the LiquiFact API</h3>
