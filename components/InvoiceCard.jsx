@@ -1,4 +1,5 @@
 import Link from "next/link";
+import FundingProgress from "./FundingProgress";
 import StatusBadge from "./StatusBadge";
 import RiskBadge from "./RiskBadge";
 import { bpsToPercent, formatAmount, formatDate, fundedPercent } from "@/lib/format";
@@ -19,7 +20,7 @@ export default function InvoiceCard({ invoice, medians }) {
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "flex-end", alignItems: "center" }}>
           <StatusBadge status={invoice.status} />
           {risk.band && <RiskBadge band={risk.band} score={risk.score} factors={risk.factors} />}
-          {invoice.onChain && <span className="badge badge-chain">on-chain</span>}
+          {invoice.onChain && <StatusBadge kind="chain" />}
         </div>
       </div>
       <div className="kv">
@@ -28,7 +29,7 @@ export default function InvoiceCard({ invoice, medians }) {
         <div><span className="k">Due</span>{formatDate(invoice.dueDate)}</div>
         <div><span className="k">Funded</span>{pct}%</div>
       </div>
-      <div className="progress" aria-label={`${pct}% funded`}><span style={{ width: `${pct}%` }} /></div>
+      <FundingProgress funded={invoice.fundedAmount} target={invoice.amount} currency={invoice.currency} size="sm" />
     </Link>
   );
 }

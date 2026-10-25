@@ -4,6 +4,7 @@ import dynamic from "next/dynamic";
 import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import OfflineNotice from "@/components/pwa/OfflineNotice";
+import FundingProgress from "@/components/FundingProgress";
 import StatusBadge from "@/components/StatusBadge";
 import RiskBadge from "@/components/RiskBadge";
 import RiskFactorsCard from "@/components/RiskFactorsCard";
@@ -235,9 +236,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
             <div className="muted">Debtor: {inv.debtor}</div>
           </div>
           <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
-            <StatusBadge status={inv.status} />
+            <StatusBadge status={inv.status} live />
             {risk.band && <RiskBadge band={risk.band} score={risk.score} factors={risk.factors} />}
-            {inv.onChain && <span className="badge badge-chain">on-chain</span>}
+            {inv.onChain && <StatusBadge kind="chain" />}
             <button
               className="btn-ghost"
               aria-pressed={isFollowing(id)}
@@ -264,7 +265,9 @@ export default function InvoiceDetail({ id, loadConstraintsFn = loadConstraints 
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: "0.9rem" }} className="muted">
                 <span>Funded</span><span>{formatAmount(inv.fundedAmount, inv.currency)} · {pct}%</span>
               </div>
-              <div className="progress" style={{ marginTop: 6 }}><span style={{ width: `${pct}%` }} /></div>
+              <div style={{ marginTop: 6 }}>
+                <FundingProgress funded={inv.fundedAmount} target={inv.amount} currency={inv.currency} size="md" />
+              </div>
             </div>
             {inv.onChain && rules.data && <EscrowRules constraints={rules.data} currency={inv.currency} />}
           </div>
