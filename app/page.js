@@ -1,9 +1,9 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import LiveStats from "@/components/LiveStats";
 import ContractCard from "@/components/ContractCard";
-import FundingProgress from "@/components/FundingProgress";
+import FeaturedInvoice, { FeaturedInvoiceSkeleton } from "@/components/FeaturedInvoice";
 import { API_DOCS_URL, CONTRACT_ID, EXPLORER_URL, NETWORK } from "@/lib/config";
-import { DEMO_INVOICES } from "@/lib/demo";
 
 const STEPS = [
   { t: "SME submits an invoice", d: "Upload an unpaid B2B invoice with amount, debtor and due date. LiquiFact lists it on the marketplace." },
@@ -13,7 +13,7 @@ const STEPS = [
 ];
 
 const FEATURES = [
-  { i: "⛓", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
+  { i: "⛍", t: "On-chain escrow", d: "A Soroban smart contract holds every investor contribution, with explicit states for open, funded and settled." },
   { i: "⚡", t: "Fast and low-cost", d: "Stellar settles in seconds for fractions of a cent, so small invoices are economical to finance." },
   { i: "🛡", t: "Built-in safeguards", d: "Legal holds, allowlists, investor caps, funding deadlines and maturity locks are enforced by the contract." },
   { i: "📈", t: "Transparent yield", d: "Yield is set in basis points per invoice and visible before you commit — no hidden spreads." },
@@ -21,7 +21,6 @@ const FEATURES = [
   { i: "🧩", t: "Open API", d: "A documented REST API powers the app and lets partners integrate invoice origination." },
 ];
 
-const EXAMPLE_INVOICE = DEMO_INVOICES[1];
 
 export default function Home() {
   return (
@@ -43,14 +42,9 @@ export default function Home() {
               <Link href="/docs" className="btn btn-light">Read the docs</Link>
             </div>
           </div>
-          <div className="glass" aria-label="Example invoice">
-            <div className="eyebrow" style={{ color: "var(--on-hero-eyebrow)" }}>Example listing</div>
-            <h3 style={{ margin: "6px 0 14px" }}>{EXAMPLE_INVOICE.id} · {EXAMPLE_INVOICE.sme}</h3>
-            <div className="row"><span className="k">Face value</span><span>{EXAMPLE_INVOICE.amount.toLocaleString("en-US")} {EXAMPLE_INVOICE.currency}</span></div>
-            <div className="row"><span className="k">Investor yield</span><span>6.50%</span></div>
-            <div className="row"><span className="k">Due</span><span>Dec 30, 2026</span></div>
-            <FundingProgress funded={EXAMPLE_INVOICE.fundedAmount} target={EXAMPLE_INVOICE.amount} currency={EXAMPLE_INVOICE.currency} size="md" showLabel />
-          </div>
+          <Suspense fallback={<FeaturedInvoiceSkeleton />}>
+            <FeaturedInvoice />
+          </Suspense>
         </div>
       </section>
 

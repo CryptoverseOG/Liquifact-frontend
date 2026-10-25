@@ -638,3 +638,8 @@ pre { background: var(--code-bg); color: var(--code-fg); padding: 16px; border-r
   .timeline-content { padding: 10px 6px 0; }
 }
 @media (prefers-reduced-motion: reduce) { .timeline-icon { transition: none; } }
+
+/* Featured hero invoice (#1410) */
+.featured-invoice { display: block; color: inherit; text-decoration: none; transition: transform 0.15s ease; }
+.featured-invoice:hover { transform: translateY(-2px); }
+.featured-invoice:focus-visible { outline: 3px solid var(--on-hero-link); outline-offset: 4px; }
