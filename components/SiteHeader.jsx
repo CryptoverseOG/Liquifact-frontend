@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { isActivePath } from "@/lib/nav";
 import ThemeToggle from "@/components/ThemeToggle";
 import NotificationBell from "@/components/NotificationBell";
+import TxActivityButton from "@/components/TxActivityButton";
 
 const LINKS = [
   { href: "/", label: "Home" },
@@ -98,6 +99,7 @@ export default function SiteHeader() {
           })}
           <ThemeToggle />
         </nav>
+        <TxActivityButton />
         <NotificationBell />
       </div>
     </header>

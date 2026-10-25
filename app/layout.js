@@ -4,6 +4,7 @@ import SiteHeader from "@/components/SiteHeader";
 import ServiceWorkerRegistrar from "@/components/pwa/ServiceWorkerRegistrar";
 import SiteFooter from "@/components/SiteFooter";
 import SkipLink from "@/components/SkipLink";
+import { TxTrackerProvider } from "@/components/TxTrackerProvider";
 import { THEME_INIT_SCRIPT } from "@/lib/theme";
 
 export const metadata = {
@@ -31,11 +32,13 @@ export default function RootLayout({ children }) {
       </head>
       <body>
         <SkipLink />
-        <NotificationsProvider>
-          <SiteHeader />
-          <main id="main" tabIndex={-1}>{children}</main>
-          <SiteFooter />
-        </NotificationsProvider>
+        <TxTrackerProvider>
+          <NotificationsProvider>
+            <SiteHeader />
+            <main id="main" tabIndex={-1}>{children}</main>
+            <SiteFooter />
+          </NotificationsProvider>
+        </TxTrackerProvider>
         <ServiceWorkerRegistrar />
       </body>
     </html>
